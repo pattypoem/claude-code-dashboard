@@ -13,6 +13,30 @@ Local web app for browsing and managing [Claude Code](https://docs.anthropic.com
 
 Terminal-style dark theme. Reads directly from `~/.claude/` (read-only).
 
+### Sessions
+
+Browse all sessions grouped by project, with search and one-click resume.
+
+![Sessions](docs/homepage.png)
+
+### Session Detail
+
+Full conversation view with collapsible thinking and tool_use blocks.
+
+![Session Detail](docs/session_detail.png)
+
+### Interactive Terminal
+
+Create new Claude sessions or resume existing ones directly in the browser via xterm.js.
+
+![Terminal](docs/terminal.png)
+
+### Statistics
+
+Daily activity, model usage, and peak hours — all rendered with pure CSS bar charts.
+
+![Stats](docs/stats.png)
+
 ## Quick Start
 
 ```bash
