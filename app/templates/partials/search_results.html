@@ -1,0 +1,33 @@
+{% if projects %}
+    {% for project in projects %}
+    <div class="project-group">
+        <div class="project-header">
+            <span class="project-icon">~</span>
+            <span class="project-name">
+                {% if project.name is defined %}
+                    {{ project.name }}
+                {% else %}
+                    {{ project.path.split('/')[-1] if project.path else project.key }}
+                {% endif %}
+            </span>
+            <span class="project-path">
+                {% if project.path is defined %}
+                    {{ project.path }}
+                {% else %}
+                    {{ project.get('path', '') }}
+                {% endif %}
+            </span>
+            <span class="session-count">{{ project.sessions|length }} session{{ 's' if project.sessions|length != 1 }}</span>
+        </div>
+        <div class="session-list">
+            {% for session in project.sessions %}
+                {% include "partials/session_card.html" %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state">
+        <p>No sessions found</p>
+    </div>
+{% endif %}

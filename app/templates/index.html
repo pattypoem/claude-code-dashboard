@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}CC Dashboard - Sessions{% endblock %}
+{% block content %}
+<div class="dashboard-header">
+    <h1>Sessions</h1>
+    <div class="search-box">
+        <input type="text" id="search-input" placeholder="Search sessions..."
+               value="{{ query }}" autocomplete="off">
+    </div>
+</div>
+
+{% if error %}
+<div class="error-banner">{{ error }}</div>
+{% endif %}
+
+<div id="session-list">
+{% if projects %}
+    {% for project in projects %}
+    <div class="project-group">
+        <div class="project-header">
+            <span class="project-icon">~</span>
+            <span class="project-name">
+                {% if project.name is defined %}
+                    {{ project.name }}
+                {% else %}
+                    {{ project.path.split('/')[-1] if project.path else project.key }}
+                {% endif %}
+            </span>
+            <span class="project-path">
+                {% if project.path is defined %}
+                    {{ project.path }}
+                {% else %}
+                    {{ project.get('path', '') }}
+                {% endif %}
+            </span>
+            <span class="session-count">{{ project.sessions|length }} session{{ 's' if project.sessions|length != 1 }}</span>
+        </div>
+        <div class="session-list">
+            {% for session in project.sessions %}
+                {% include "partials/session_card.html" %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty-state">
+        {% if query %}
+            <p>No sessions matching "{{ query }}"</p>
+        {% else %}
+            <p>No sessions found in ~/.claude/</p>
+        {% endif %}
+    </div>
+{% endif %}
+</div>
+{% endblock %}

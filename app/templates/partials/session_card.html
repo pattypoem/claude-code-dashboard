@@ -1,0 +1,19 @@
+<div class="session-card">
+    <div class="session-card-main">
+        <a href="/session/{{ session.session_id }}" class="session-title">
+            {{ session.display_title | truncate_text(120) }}
+        </a>
+        <div class="session-meta">
+            {% if session.git_branch %}
+            <span class="meta-tag branch-tag">{{ session.git_branch }}</span>
+            {% endif %}
+            <span class="meta-tag">{{ session.message_count }} msg{{ 's' if session.message_count != 1 }}</span>
+            <span class="meta-tag time-tag" title="{{ session.modified | format_date }}">{{ session.modified | timeago }}</span>
+        </div>
+    </div>
+    <div class="session-card-actions">
+        <a href="/session/{{ session.session_id }}" class="btn btn-sm">View</a>
+        <a href="/terminal?resume={{ session.session_id }}&cwd={{ session.project_path }}" class="btn btn-sm btn-accent">Open</a>
+        <button class="btn btn-sm resume-btn" data-session-id="{{ session.session_id }}" title="Copy resume command">Copy</button>
+    </div>
+</div>

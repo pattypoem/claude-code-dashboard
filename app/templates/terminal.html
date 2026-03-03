@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Terminal - CC Dashboard{% endblock %}
+{% block container_class %}container-full{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/xterm.min.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="terminal-page">
+    <!-- Lobby: visible when no terminal is active -->
+    <div id="lobby">
+        <div class="lobby-header">
+            <h1>Terminal</h1>
+        </div>
+
+        <section class="lobby-section">
+            <h2>New Session</h2>
+            <div class="new-session-form">
+                <div class="form-group">
+                    <label for="project-select">Project directory</label>
+                    <select id="project-select" class="form-select">
+                        <option value="">~ (Home directory)</option>
+                        {% for project in projects %}
+                        <option value="{{ project.path }}">{{ project.name }} &mdash; {{ project.path }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button id="new-session-btn" class="btn btn-accent">Start Claude</button>
+            </div>
+        </section>
+
+        <section class="lobby-section" id="active-section" style="display:none">
+            <h2>Active Terminals</h2>
+            <div id="active-terminals"></div>
+        </section>
+    </div>
+
+    <!-- Terminal: visible when connected -->
+    <div id="terminal-view" style="display:none">
+        <div class="terminal-toolbar">
+            <button id="back-btn" class="btn btn-sm">&lt; Back</button>
+            <span id="terminal-info" class="terminal-info-text"></span>
+            <span id="terminal-status" class="terminal-status-badge">connecting</span>
+            <div class="toolbar-spacer"></div>
+            <button id="kill-btn" class="btn btn-sm btn-danger">Kill</button>
+        </div>
+        <div id="terminal-container"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='vendor/xterm.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/xterm-addon-fit.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/terminal.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Stats - CC Dashboard{% endblock %}
+{% block content %}
+<div class="stats-page">
+    <h1>Statistics</h1>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_sessions | format_number }}</div>
+            <div class="stat-label">Total Sessions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_messages | format_number }}</div>
+            <div class="stat-label">Total Messages</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.first_session_date | format_date }}</div>
+            <div class="stat-label">First Session</div>
+        </div>
+        {% if stats.longest_session %}
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.longest_session.get('messageCount', 0) }}</div>
+            <div class="stat-label">Longest Session (msgs)</div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if stats.daily_activity %}
+    <section class="stats-section">
+        <h2>Daily Activity</h2>
+        <div class="bar-chart">
+            {% set max_msgs = stats.daily_activity | map(attribute='messageCount') | max %}
+            {% for day in stats.daily_activity %}
+            <div class="bar-row">
+                <span class="bar-label">{{ day.date }}</span>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width: {{ (day.messageCount / max_msgs * 100) | round(1) }}%"></div>
+                </div>
+                <span class="bar-value">{{ day.messageCount }} msgs / {{ day.sessionCount }} sess</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if stats.model_usage %}
+    <section class="stats-section">
+        <h2>Model Usage</h2>
+        <div class="model-table">
+            <div class="table-header">
+                <span>Model</span>
+                <span>Input Tokens</span>
+                <span>Output Tokens</span>
+                <span>Cache Read</span>
+                <span>Cache Write</span>
+            </div>
+            {% for model_name, usage in stats.model_usage.items() %}
+            <div class="table-row">
+                <span class="model-name">{{ model_name }}</span>
+                <span>{{ usage.get('inputTokens', 0) | format_number }}</span>
+                <span>{{ usage.get('outputTokens', 0) | format_number }}</span>
+                <span>{{ usage.get('cacheReadInputTokens', 0) | format_number }}</span>
+                <span>{{ usage.get('cacheCreationInputTokens', 0) | format_number }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if stats.hour_counts %}
+    <section class="stats-section">
+        <h2>Peak Hours</h2>
+        <div class="bar-chart hour-chart">
+            {% set max_hour = stats.hour_counts.values() | max %}
+            {% for hour in range(24) %}
+            {% set count = stats.hour_counts.get(hour | string, 0) %}
+            <div class="bar-row">
+                <span class="bar-label">{{ "%02d" | format(hour) }}:00</span>
+                <div class="bar-track">
+                    {% if count > 0 %}
+                    <div class="bar-fill bar-fill-accent" style="width: {{ (count / max_hour * 100) | round(1) }}%"></div>
+                    {% endif %}
+                </div>
+                <span class="bar-value">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+<nav class="navbar">
+    <div class="nav-inner">
+        <a href="/" class="nav-brand">
+            <span class="brand-symbol">&gt;_</span> CC Dashboard
+        </a>
+        <div class="nav-links">
+            <a href="/" class="nav-link{% if request.path == '/' %} active{% endif %}">Sessions</a>
+            <a href="/terminal" class="nav-link{% if request.path == '/terminal' %} active{% endif %}">Terminal</a>
+            <a href="/stats" class="nav-link{% if request.path == '/stats' %} active{% endif %}">Stats</a>
+        </div>
+    </div>
+</nav>

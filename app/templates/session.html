@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ session.display_title | truncate_text(60) }} - CC Dashboard{% endblock %}
+{% block content %}
+<div class="session-header">
+    <a href="/" class="back-link">&lt; Back</a>
+    <h1>{{ session.display_title }}</h1>
+    <div class="session-info">
+        <span class="meta-tag">{{ session.project_name }}</span>
+        {% if session.git_branch %}
+        <span class="meta-tag branch-tag">{{ session.git_branch }}</span>
+        {% endif %}
+        <span class="meta-tag">{{ session.message_count }} messages</span>
+        <span class="meta-tag time-tag">{{ session.modified | timeago }}</span>
+        <button class="btn btn-sm btn-accent resume-btn" data-session-id="{{ session.session_id }}">Copy Resume Command</button>
+    </div>
+    <div class="session-id-line">
+        <code>{{ session.session_id }}</code>
+    </div>
+</div>
+
+<div class="conversation">
+    {% for msg in messages %}
+        {% include "partials/message.html" %}
+    {% endfor %}
+
+    {% if not messages %}
+    <div class="empty-state">
+        <p>No messages in this session</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

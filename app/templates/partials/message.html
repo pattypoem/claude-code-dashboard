@@ -1,0 +1,49 @@
+<div class="message message-{{ msg.role }}">
+    <div class="message-header">
+        <span class="message-role">{{ '> You' if msg.role == 'user' else '$ Assistant' }}</span>
+        {% if msg.model %}
+        <span class="message-model">{{ msg.model }}</span>
+        {% endif %}
+        {% if msg.timestamp %}
+        <span class="message-time">{{ msg.timestamp | format_date }}</span>
+        {% endif %}
+    </div>
+    <div class="message-body">
+        {% for block in msg.content %}
+            {% if block is string %}
+                <div class="content-text">{{ block }}</div>
+            {% elif block.type == "text" %}
+                <div class="content-text">{{ block.text }}</div>
+            {% elif block.type == "thinking" %}
+                <details class="thinking-block">
+                    <summary>Thinking...</summary>
+                    <div class="thinking-content">{{ block.thinking }}</div>
+                </details>
+            {% elif block.type == "tool_use" %}
+                <details class="tool-block">
+                    <summary>Tool: {{ block.name }}{% if block.input and block.input.description is defined %} - {{ block.input.description }}{% endif %}</summary>
+                    <div class="tool-content">
+                        {% if block.input %}
+                        <pre>{{ block.input | tojson(indent=2) }}</pre>
+                        {% endif %}
+                    </div>
+                </details>
+            {% elif block.type == "tool_result" %}
+                <details class="tool-result-block">
+                    <summary>Tool Result</summary>
+                    <div class="tool-content">
+                        {% if block.content is string %}
+                            <pre>{{ block.content }}</pre>
+                        {% elif block.content is iterable %}
+                            {% for sub in block.content %}
+                                {% if sub is mapping and sub.text is defined %}
+                                    <pre>{{ sub.text }}</pre>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </details>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
