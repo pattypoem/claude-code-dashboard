@@ -39,6 +39,17 @@ Daily activity, model usage, and peak hours — all rendered with pure CSS bar c
 
 ## Quick Start
 
+### Using uv (recommended)
+
+```bash
+git clone https://github.com/pattypoem/claude-code-dashboard.git
+cd claude-code-dashboard
+uv sync
+uv run claude-code-dashboard
+```
+
+### Using pip
+
 ```bash
 git clone https://github.com/pattypoem/claude-code-dashboard.git
 cd claude-code-dashboard
