@@ -21,6 +21,8 @@ class Session:
     project_path: str  # original path e.g. "/Users/admin/MiroFish"
     first_prompt: str = ""
     summary: str = ""
+    custom_title: str = ""  # from /rename command
+    last_user_message: str = ""
     message_count: int = 0
     created: str = ""
     modified: str = ""
@@ -29,8 +31,12 @@ class Session:
 
     @property
     def display_title(self) -> str:
+        if self.custom_title:
+            return self.custom_title
         if self.summary:
             return self.summary
+        if self.last_user_message:
+            return self.last_user_message[:80]
         if self.first_prompt:
             return self.first_prompt[:80]
         return self.session_id[:12]

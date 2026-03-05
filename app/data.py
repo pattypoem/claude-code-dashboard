@@ -72,59 +72,47 @@ def get_all_sessions() -> list[Session]:
         if not project_dir.is_dir():
             continue
         project_key = project_dir.name
+
+        # Read index only for supplementary data (summary, sidechain flag)
         index_path = project_dir / "sessions-index.json"
         index_data = _read_json_cached(index_path)
+        index_lookup: dict[str, dict] = {}
+        original_path = _decode_project_key(project_key)
+        if index_data:
+            original_path = index_data.get("originalPath", original_path)
+            for entry in index_data.get("entries", []):
+                sid = entry.get("sessionId", "")
+                if sid:
+                    index_lookup[sid] = entry
 
-        if index_data and "entries" in index_data:
-            original_path = index_data.get("originalPath", "")
-            for entry in index_data["entries"]:
-                if entry.get("isSidechain"):
-                    continue
-                session = Session(
-                    session_id=entry.get("sessionId", ""),
-                    project_key=project_key,
-                    project_path=entry.get("projectPath", original_path),
-                    first_prompt=entry.get("firstPrompt", ""),
-                    summary=entry.get("summary", ""),
-                    message_count=entry.get("messageCount", 0),
-                    created=entry.get("created", ""),
-                    modified=entry.get("modified", ""),
-                    git_branch=entry.get("gitBranch", ""),
-                    jsonl_path=entry.get("fullPath", ""),
-                )
-                sessions.append(session)
-        else:
-            # No index file — scan for JSONL files directly
-            original_path = _decode_project_key(project_key)
-            for jsonl_file in sorted(project_dir.glob("*.jsonl")):
-                session_id = jsonl_file.stem
-                first_line = _peek_first_user_message(jsonl_file)
-                meta = _extract_session_meta(jsonl_file)
-                session = Session(
-                    session_id=session_id,
-                    project_key=project_key,
-                    project_path=meta.get("project_path", original_path),
-                    first_prompt=first_line,
-                    summary="",
-                    message_count=meta.get("message_count", 0),
-                    created=meta.get("created", ""),
-                    modified=meta.get("modified", ""),
-                    git_branch=meta.get("git_branch", ""),
-                    jsonl_path=str(jsonl_file),
-                )
-                sessions.append(session)
+        # Always scan JSONL files as primary source (real-time)
+        for jsonl_file in sorted(project_dir.glob("*.jsonl")):
+            session_id = jsonl_file.stem
+            index_entry = index_lookup.get(session_id, {})
 
-    # Deduplicate by session_id (prefer entries with summary/index data)
-    seen: dict[str, Session] = {}
-    for s in sessions:
-        existing = seen.get(s.session_id)
-        if existing is None:
-            seen[s.session_id] = s
-        elif s.summary and not existing.summary:
-            # Prefer the one from sessions-index (has summary)
-            seen[s.session_id] = s
+            if index_entry.get("isSidechain"):
+                continue
 
-    sessions = list(seen.values())
+            first_line = _peek_first_user_message(jsonl_file)
+            meta = _extract_session_meta(jsonl_file)
+            session = Session(
+                session_id=session_id,
+                project_key=project_key,
+                project_path=meta.get("project_path", original_path),
+                first_prompt=first_line,
+                summary=meta.get("summary", "") or index_entry.get("summary", ""),
+                custom_title=meta.get("custom_title", ""),
+                last_user_message=meta.get("last_user_message", ""),
+                message_count=meta.get("message_count", 0),
+                created=meta.get("created", ""),
+                modified=meta.get("modified", ""),
+                git_branch=meta.get("git_branch", ""),
+                jsonl_path=str(jsonl_file),
+            )
+            sessions.append(session)
+
+    # Filter out empty sessions (no messages and no meaningful title)
+    sessions = [s for s in sessions if s.message_count > 0]
 
     # Sort by modified time, newest first
     sessions.sort(key=lambda s: s.modified or s.created, reverse=True)
@@ -168,7 +156,11 @@ def _peek_first_user_message(jsonl_path: Path) -> str:
 
 def _extract_session_meta(jsonl_path: Path) -> dict:
     """Extract basic metadata from a JSONL file."""
-    meta = {"message_count": 0, "created": "", "modified": "", "git_branch": "", "project_path": ""}
+    meta = {
+        "message_count": 0, "created": "", "modified": "",
+        "git_branch": "", "project_path": "",
+        "custom_title": "", "summary": "", "last_user_message": "",
+    }
     first_ts = None
     last_ts = None
     try:
@@ -177,7 +169,11 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
                 try:
                     d = json.loads(line)
                     msg_type = d.get("type")
-                    if msg_type in ("user", "assistant"):
+                    if msg_type == "custom-title":
+                        meta["custom_title"] = d.get("customTitle", "")
+                    elif msg_type == "summary":
+                        meta["summary"] = d.get("summary", "")
+                    elif msg_type in ("user", "assistant"):
                         meta["message_count"] += 1
                         ts = d.get("timestamp")
                         if ts:
@@ -188,6 +184,11 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
                             meta["git_branch"] = d["gitBranch"]
                         if not meta["project_path"] and d.get("cwd"):
                             meta["project_path"] = d["cwd"]
+                        if msg_type == "user":
+                            content = d.get("message", {}).get("content", "")
+                            text = _extract_user_text(content)
+                            if text:
+                                meta["last_user_message"] = text
                 except json.JSONDecodeError:
                     continue
     except OSError:
@@ -195,6 +196,23 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
     meta["created"] = first_ts or ""
     meta["modified"] = last_ts or ""
     return meta
+
+
+def _extract_user_text(content) -> str:
+    """Extract plain text from user message content, skipping commands."""
+    if isinstance(content, str):
+        if "<command-name>" in content or "<local-command" in content:
+            return ""
+        return content[:200].strip() if len(content) > 10 else ""
+    elif isinstance(content, list):
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = block.get("text", "")
+                if "<command-name>" in text or "<local-command" in text:
+                    continue
+                if len(text) > 10:
+                    return text[:200].strip()
+    return ""
 
 
 def get_projects_with_sessions() -> list[Project]:

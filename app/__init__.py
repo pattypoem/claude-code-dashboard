@@ -21,4 +21,10 @@ def create_app():
     from .events import register_events
     register_events(socketio)
 
+    @app.after_request
+    def set_no_cache(response):
+        if response.content_type and "text/html" in response.content_type:
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
+
     return app
