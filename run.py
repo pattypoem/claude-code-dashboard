@@ -5,7 +5,8 @@ from app import create_app, socketio
 
 app = create_app()
 
-if __name__ == "__main__":
+
+def main():
     socketio.run(
         app,
         host="127.0.0.1",
@@ -14,3 +15,7 @@ if __name__ == "__main__":
         use_reloader=False,
         allow_unsafe_werkzeug=True,
     )
+
+
+if __name__ == "__main__":
+    main()
