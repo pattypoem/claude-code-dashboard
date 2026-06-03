@@ -4,3 +4,4 @@ venv/
 .env
 *.log
 .DS_Store
+.claude/
