@@ -620,6 +620,21 @@ details[open] summary {
     margin-bottom: 1rem;
 }
 
+.bg-filter-note {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.bg-filter-note a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.bg-filter-note a:hover {
+    text-decoration: underline;
+}
+
 /* ========== Toast Notification ========== */
 .toast {
     position: fixed;

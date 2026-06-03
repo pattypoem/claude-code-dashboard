@@ -2,29 +2,40 @@
 
 from flask import Blueprint, render_template, request, jsonify
 
-from .data import get_projects_with_sessions, get_session_by_id, get_session_messages, get_stats, search_sessions
+from .data import (
+    get_all_sessions,
+    get_session_by_id,
+    get_session_messages,
+    get_stats,
+    group_by_project,
+    search_sessions,
+)
 
 bp = Blueprint("main", __name__)
 
 
 @bp.route("/")
 def index():
-    """Dashboard: sessions grouped by project, with optional search."""
-    query = request.args.get("q", "").strip()
-    if query:
-        sessions = search_sessions(query)
-        # Group filtered sessions by project
-        project_map = {}
-        for s in sessions:
-            key = s.project_key
-            if key not in project_map:
-                project_map[key] = {"key": key, "path": s.project_path, "sessions": []}
-            project_map[key]["sessions"].append(s)
-        projects = sorted(project_map.values(), key=lambda p: p["sessions"][0].modified, reverse=True)
-    else:
-        projects = get_projects_with_sessions()
+    """Dashboard: sessions grouped by project, with optional search.
 
-    return render_template("index.html", projects=projects, query=query)
+    Background (headless/SDK) sessions are hidden unless ?bg=1 is set.
+    """
+    query = request.args.get("q", "").strip()
+    show_bg = request.args.get("bg") == "1"
+
+    if query:
+        matched = search_sessions(query, include_background=True)
+    else:
+        matched = get_all_sessions(include_background=True)
+
+    hidden_count = sum(1 for s in matched if s.is_background)
+    shown = matched if show_bg else [s for s in matched if not s.is_background]
+    projects = group_by_project(shown)
+
+    return render_template(
+        "index.html", projects=projects, query=query,
+        show_bg=show_bg, hidden_count=hidden_count,
+    )
 
 
 @bp.route("/session/<session_id>")
@@ -49,15 +60,9 @@ def stats():
 def api_search():
     """Search API returning HTML partial."""
     query = request.args.get("q", "").strip()
-    sessions = search_sessions(query)
-    # Group by project
-    project_map = {}
-    for s in sessions:
-        key = s.project_key
-        if key not in project_map:
-            project_map[key] = {"key": key, "path": s.project_path, "sessions": []}
-        project_map[key]["sessions"].append(s)
-    projects = sorted(project_map.values(), key=lambda p: p["sessions"][0].modified, reverse=True)
+    show_bg = request.args.get("bg") == "1"
+    sessions = search_sessions(query, include_background=show_bg)
+    projects = group_by_project(sessions)
     return render_template("partials/search_results.html", projects=projects)
 
 

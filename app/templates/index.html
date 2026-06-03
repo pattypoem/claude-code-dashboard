@@ -13,6 +13,18 @@
 <div class="error-banner">{{ error }}</div>
 {% endif %}
 
+{% if hidden_count or show_bg %}
+<div class="bg-filter-note">
+    {% if show_bg %}
+        Showing background tasks ·
+        <a href="/{% if query %}?q={{ query | urlencode }}{% endif %}">Hide</a>
+    {% else %}
+        {{ hidden_count }} background task{{ 's' if hidden_count != 1 }} hidden ·
+        <a href="/?bg=1{% if query %}&amp;q={{ query | urlencode }}{% endif %}">Show</a>
+    {% endif %}
+</div>
+{% endif %}
+
 <div id="session-list">
 {% if projects %}
     {% for project in projects %}

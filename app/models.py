@@ -28,6 +28,13 @@ class Session:
     modified: str = ""
     git_branch: str = ""
     jsonl_path: str = ""
+    entrypoint: str = ""  # "cli" = interactive, "sdk-cli" = headless/background task
+
+    @property
+    def is_background(self) -> bool:
+        """True for sessions launched non-interactively (SDK/headless),
+        e.g. scheduled subagent runs. These are noise in the session list."""
+        return self.entrypoint == "sdk-cli"
 
     @property
     def display_title(self) -> str:

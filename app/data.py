@@ -61,8 +61,12 @@ def _read_jsonl_cached(path: Path) -> Optional[list[dict]]:
         return None
 
 
-def get_all_sessions() -> list[Session]:
-    """Get all sessions from all projects."""
+def get_all_sessions(include_background: bool = False) -> list[Session]:
+    """Get all sessions from all projects.
+
+    Background sessions (headless/SDK-launched, e.g. scheduled subagent runs)
+    are hidden by default; pass include_background=True to keep them.
+    """
     sessions = []
     projects_dir = Config.PROJECTS_DIR
     if not projects_dir.is_dir():
@@ -108,11 +112,16 @@ def get_all_sessions() -> list[Session]:
                 modified=meta.get("modified", ""),
                 git_branch=meta.get("git_branch", ""),
                 jsonl_path=str(jsonl_file),
+                entrypoint=meta.get("entrypoint", ""),
             )
             sessions.append(session)
 
     # Filter out empty sessions (no messages and no meaningful title)
     sessions = [s for s in sessions if s.message_count > 0]
+
+    # Hide background (headless/SDK) sessions unless explicitly requested
+    if not include_background:
+        sessions = [s for s in sessions if not s.is_background]
 
     # Sort by modified time, newest first
     sessions.sort(key=lambda s: s.modified or s.created, reverse=True)
@@ -160,6 +169,7 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
         "message_count": 0, "created": "", "modified": "",
         "git_branch": "", "project_path": "",
         "custom_title": "", "summary": "", "last_user_message": "",
+        "entrypoint": "",
     }
     first_ts = None
     last_ts = None
@@ -184,6 +194,8 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
                             meta["git_branch"] = d["gitBranch"]
                         if not meta["project_path"] and d.get("cwd"):
                             meta["project_path"] = d["cwd"]
+                        if not meta["entrypoint"] and d.get("entrypoint"):
+                            meta["entrypoint"] = d["entrypoint"]
                         if msg_type == "user":
                             content = d.get("message", {}).get("content", "")
                             text = _extract_user_text(content)
@@ -215,11 +227,9 @@ def _extract_user_text(content) -> str:
     return ""
 
 
-def get_projects_with_sessions() -> list[Project]:
-    """Get sessions grouped by project."""
-    sessions = get_all_sessions()
+def group_by_project(sessions: list[Session]) -> list[Project]:
+    """Group a list of sessions into projects, sorted by most recent activity."""
     project_map: dict[str, Project] = {}
-
     for session in sessions:
         key = session.project_key
         if key not in project_map:
@@ -239,9 +249,14 @@ def get_projects_with_sessions() -> list[Project]:
     return projects
 
 
+def get_projects_with_sessions(include_background: bool = False) -> list[Project]:
+    """Get sessions grouped by project."""
+    return group_by_project(get_all_sessions(include_background=include_background))
+
+
 def get_session_by_id(session_id: str) -> Optional[Session]:
-    """Find a session by its ID."""
-    for session in get_all_sessions():
+    """Find a session by its ID (background sessions included, so direct links resolve)."""
+    for session in get_all_sessions(include_background=True):
         if session.session_id == session_id:
             return session
     return None
@@ -320,14 +335,14 @@ def get_stats() -> Stats:
     )
 
 
-def search_sessions(query: str) -> list[Session]:
+def search_sessions(query: str, include_background: bool = False) -> list[Session]:
     """Search sessions by title, summary, or first prompt."""
     if not query:
-        return get_all_sessions()
+        return get_all_sessions(include_background=include_background)
 
     query_lower = query.lower()
     results = []
-    for session in get_all_sessions():
+    for session in get_all_sessions(include_background=include_background):
         if (
             query_lower in session.summary.lower()
             or query_lower in session.first_prompt.lower()
