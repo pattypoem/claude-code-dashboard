@@ -69,7 +69,7 @@ def api_search():
 @bp.route("/terminal")
 def terminal_page():
     """Interactive terminal page."""
-    projects = get_projects_with_sessions()
+    projects = group_by_project(get_all_sessions())
     return render_template("terminal.html", projects=projects)
 
 

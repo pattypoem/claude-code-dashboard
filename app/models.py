@@ -37,6 +37,20 @@ class Session:
         return self.entrypoint == "sdk-cli"
 
     @property
+    def is_recent(self) -> bool:
+        """True if last activity was within the last 10 days.
+        Property (not method) so Jinja's rejectattr/selectattr work."""
+        from datetime import datetime, timezone, timedelta
+        ts = self.modified or self.created
+        if not ts:
+            return False
+        try:
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            return False
+        return (datetime.now(timezone.utc) - dt) <= timedelta(days=10)
+
+    @property
     def display_title(self) -> str:
         if self.custom_title:
             return self.custom_title

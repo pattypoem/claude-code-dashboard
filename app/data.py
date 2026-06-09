@@ -318,20 +318,105 @@ def get_session_messages(session: Session) -> list[Message]:
 
 
 def get_stats() -> Stats:
-    """Read stats from stats-cache.json."""
-    data = _read_json_cached(Config.STATS_CACHE)
-    if not data:
-        return Stats()
+    """Compute stats directly from JSONL files.
+
+    Claude Code's own stats-cache.json updates lazily and was often stale,
+    so we recompute on each request. Background (sdk-cli) sessions ARE
+    counted — token spend matters whether interactive or not.
+    """
+    # Use same filter as the session list (skip sidechain + empty) but INCLUDE
+    # background sessions: tokens spent by headless tasks are still real spend.
+    sessions = get_all_sessions(include_background=True)
+    total_sessions = len(sessions)
+    total_messages = 0
+    first_session_ts = ""
+    longest_count = 0
+    daily: dict[str, dict] = {}  # date -> {messageCount, sessionCount, toolCallCount}
+    daily_session_seen: dict[str, set] = {}  # date -> {session_ids} for dedup
+    model_usage: dict[str, dict] = {}
+    hour_counts: dict[str, int] = {}
+
+    for session in sessions:
+        jsonl_file = Path(session.jsonl_path)
+        if not jsonl_file.is_file():
+            continue
+        session_id = session.session_id
+        session_msg_count = 0
+
+        try:
+            with open(jsonl_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        d = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    t = d.get("type")
+                    if t not in ("user", "assistant"):
+                        continue
+
+                    session_msg_count += 1
+                    total_messages += 1
+                    ts = d.get("timestamp", "")
+                    if ts:
+                        if not first_session_ts or ts < first_session_ts:
+                            first_session_ts = ts
+                        date_key = ts[:10]
+                        try:
+                            hour = int(ts[11:13])
+                            hour_counts[str(hour)] = hour_counts.get(str(hour), 0) + 1
+                        except ValueError:
+                            pass
+                        day = daily.setdefault(date_key, {
+                            "date": date_key,
+                            "messageCount": 0,
+                            "sessionCount": 0,
+                            "toolCallCount": 0,
+                        })
+                        day["messageCount"] += 1
+                        seen = daily_session_seen.setdefault(date_key, set())
+                        if session_id not in seen:
+                            seen.add(session_id)
+                            day["sessionCount"] += 1
+
+                    if t == "assistant":
+                        msg = d.get("message", {})
+                        usage = msg.get("usage", {})
+                        model = msg.get("model")
+                        if model and usage:
+                            m = model_usage.setdefault(model, {
+                                "inputTokens": 0,
+                                "outputTokens": 0,
+                                "cacheReadInputTokens": 0,
+                                "cacheCreationInputTokens": 0,
+                            })
+                            m["inputTokens"] += usage.get("input_tokens", 0)
+                            m["outputTokens"] += usage.get("output_tokens", 0)
+                            m["cacheReadInputTokens"] += usage.get("cache_read_input_tokens", 0)
+                            m["cacheCreationInputTokens"] += usage.get("cache_creation_input_tokens", 0)
+                        content = msg.get("content", [])
+                        if isinstance(content, list):
+                            for block in content:
+                                if isinstance(block, dict) and block.get("type") == "tool_use":
+                                    date_key = ts[:10] if ts else ""
+                                    if date_key and date_key in daily:
+                                        daily[date_key]["toolCallCount"] += 1
+        except OSError:
+            continue
+
+        if session_msg_count > longest_count:
+            longest_count = session_msg_count
+
+    daily_activity = sorted(daily.values(), key=lambda x: x["date"])
 
     return Stats(
-        total_sessions=data.get("totalSessions", 0),
-        total_messages=data.get("totalMessages", 0),
-        daily_activity=data.get("dailyActivity", []),
-        model_usage=data.get("modelUsage", {}),
-        hour_counts=data.get("hourCounts", {}),
-        longest_session=data.get("longestSession", {}),
-        first_session_date=data.get("firstSessionDate", ""),
-        daily_model_tokens=data.get("dailyModelTokens", []),
+        total_sessions=total_sessions,
+        total_messages=total_messages,
+        daily_activity=daily_activity,
+        model_usage=model_usage,
+        hour_counts=hour_counts,
+        longest_session={"messageCount": longest_count} if longest_count else {},
+        first_session_date=first_session_ts,
+        daily_model_tokens=[],
     )
 
 

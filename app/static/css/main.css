@@ -635,6 +635,35 @@ details[open] summary {
     text-decoration: underline;
 }
 
+/* Older sessions: hidden by default, revealed when project group has .show-older */
+.session-list .session-older {
+    display: none;
+}
+
+.session-list.show-older .session-older {
+    display: flex;
+}
+
+.show-older-btn {
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding: 0.4rem 0.75rem;
+    margin-top: 0.25rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    align-self: flex-start;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.show-older-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--text-dim);
+}
+
 /* ========== Toast Notification ========== */
 .toast {
     position: fixed;

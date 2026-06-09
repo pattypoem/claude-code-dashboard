@@ -45,6 +45,21 @@
             });
     });
 
+    /* ---- Show older sessions toggle (per project group) ---- */
+    document.addEventListener("click", function (e) {
+        const btn = e.target.closest(".show-older-btn");
+        if (!btn) return;
+        const list = btn.closest(".session-list");
+        if (!list) return;
+        const expanded = list.classList.toggle("show-older");
+        btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+        const olderCount = list.dataset.olderCount || "";
+        const plural = olderCount !== "1" ? "s" : "";
+        btn.innerHTML = expanded
+            ? "Hide older session" + plural + " ↑"
+            : "Show " + olderCount + " older session" + plural + " ↓";
+    });
+
     /* ---- Live search with debounce ---- */
     var searchInput = document.getElementById("search-input");
     var sessionList = document.getElementById("session-list");

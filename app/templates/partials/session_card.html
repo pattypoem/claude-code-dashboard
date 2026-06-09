@@ -1,4 +1,4 @@
-<div class="session-card">
+<div class="session-card{% if fold_older and not session.is_recent %} session-older{% endif %}">
     <div class="session-card-main">
         <a href="/session/{{ session.session_id }}" class="session-title">
             {{ session.display_title | truncate_text(120) }}
