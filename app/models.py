@@ -31,6 +31,7 @@ class Session:
     entrypoint: str = ""  # "cli" = interactive, "sdk-cli" = headless/background task
     last_input_tokens: int = 0   # tokens sent on the most recent assistant call (input + cache)
     total_output_tokens: int = 0  # cumulative output tokens generated in this session
+    compact_pending: bool = False  # True if /compact happened after the last assistant turn
 
     @property
     def is_background(self) -> bool:

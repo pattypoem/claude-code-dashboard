@@ -115,6 +115,7 @@ def get_all_sessions(include_background: bool = False) -> list[Session]:
                 entrypoint=meta.get("entrypoint", ""),
                 last_input_tokens=meta.get("last_input_tokens", 0),
                 total_output_tokens=meta.get("total_output_tokens", 0),
+                compact_pending=meta.get("compact_pending", False),
             )
             sessions.append(session)
 
@@ -173,9 +174,12 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
         "custom_title": "", "summary": "", "last_user_message": "",
         "entrypoint": "",
         "last_input_tokens": 0, "total_output_tokens": 0,
+        "compact_pending": False,
     }
     first_ts = None
     last_ts = None
+    last_assistant_ts = ""
+    last_compact_ts = ""
     try:
         with open(jsonl_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -200,6 +204,8 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
                         if not meta["entrypoint"] and d.get("entrypoint"):
                             meta["entrypoint"] = d["entrypoint"]
                         if msg_type == "assistant":
+                            if ts:
+                                last_assistant_ts = ts
                             usage = d.get("message", {}).get("usage", {})
                             if usage:
                                 inp = (usage.get("input_tokens", 0)
@@ -215,12 +221,26 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
                             text = _extract_user_text(content)
                             if text:
                                 meta["last_user_message"] = text
+                    elif msg_type == "attachment":
+                        # `compact_file_reference` is written when Claude Code
+                        # finishes a /compact (manual or auto). If the latest
+                        # one is more recent than the last assistant turn,
+                        # last_input_tokens is stale (compact happened but no
+                        # model reply has refreshed the number yet).
+                        att = d.get("attachment", {})
+                        if att.get("type") == "compact_file_reference":
+                            cts = d.get("timestamp", "")
+                            if cts and cts > last_compact_ts:
+                                last_compact_ts = cts
                 except json.JSONDecodeError:
                     continue
     except OSError:
         pass
     meta["created"] = first_ts or ""
     meta["modified"] = last_ts or ""
+    # Stale ctx number: a /compact occurred after the most recent assistant
+    # turn — the next assistant turn will refresh last_input_tokens.
+    meta["compact_pending"] = bool(last_compact_ts and last_compact_ts > last_assistant_ts)
     return meta
 
 

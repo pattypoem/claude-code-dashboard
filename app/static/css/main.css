@@ -330,6 +330,12 @@ pre {
 .ctx-med  { color: var(--accent); }
 .ctx-high { color: var(--red); }
 
+/* Shown when /compact ran but ctx hasn't refreshed yet (no assistant turn since) */
+.ctx-compacted {
+    color: var(--green);
+    background: rgba(78, 201, 122, 0.1);
+}
+
 .session-card-actions {
     display: flex;
     gap: 0.4rem;
