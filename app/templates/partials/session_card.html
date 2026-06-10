@@ -9,6 +9,16 @@
             {% endif %}
             <span class="meta-tag">{{ session.message_count }} msg{{ 's' if session.message_count != 1 }}</span>
             <span class="meta-tag time-tag" title="{{ session.modified | format_date }}">{{ session.modified | timeago }}</span>
+            {% if session.last_input_tokens %}
+            <span class="meta-tag ctx-tag ctx-{{ session.ctx_level }}"
+                  title="Last turn input: {{ session.last_input_tokens | format_number }} tok · auto-compact at 800K">
+                <span class="ctx-bar"><span class="ctx-bar-fill" style="width: {{ session.ctx_percent }}%"></span></span>
+                ctx {{ session.ctx_percent }}%
+            </span>
+            {% endif %}
+            {% if session.total_output_tokens %}
+            <span class="meta-tag" title="Total output tokens generated">{{ session.total_output_tokens | format_tokens }} out</span>
+            {% endif %}
         </div>
     </div>
     <div class="session-card-actions">

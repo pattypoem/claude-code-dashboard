@@ -29,12 +29,36 @@ class Session:
     git_branch: str = ""
     jsonl_path: str = ""
     entrypoint: str = ""  # "cli" = interactive, "sdk-cli" = headless/background task
+    last_input_tokens: int = 0   # tokens sent on the most recent assistant call (input + cache)
+    total_output_tokens: int = 0  # cumulative output tokens generated in this session
 
     @property
     def is_background(self) -> bool:
         """True for sessions launched non-interactively (SDK/headless),
         e.g. scheduled subagent runs. These are noise in the session list."""
         return self.entrypoint == "sdk-cli"
+
+    # Claude Code auto-compacts around 80% of the model's context window.
+    # Users here run 1M-context models (the [1m] variant), so compact triggers
+    # at ~800K tokens of input (input + cache_read + cache_creation).
+    CONTEXT_AUTOCOMPACT_TOKENS = 800_000
+
+    @property
+    def ctx_percent(self) -> int:
+        """Latest turn's input as a % of the auto-compact threshold (capped at 100)."""
+        if not self.last_input_tokens:
+            return 0
+        return min(100, round(self.last_input_tokens / self.CONTEXT_AUTOCOMPACT_TOKENS * 100))
+
+    @property
+    def ctx_level(self) -> str:
+        """Bucket for color-coding: 'low' / 'med' / 'high'."""
+        p = self.ctx_percent
+        if p >= 85:
+            return "high"
+        if p >= 60:
+            return "med"
+        return "low"
 
     @property
     def is_recent(self) -> bool:

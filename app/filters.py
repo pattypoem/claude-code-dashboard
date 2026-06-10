@@ -59,6 +59,19 @@ def truncate_text(value: str, length: int = 100) -> str:
     return value[:length].rstrip() + "..."
 
 
+def format_tokens(value) -> str:
+    """Compact token count: 1234 -> '1.2K', 1_234_567 -> '1.2M'."""
+    try:
+        n = int(value)
+    except (ValueError, TypeError):
+        return "0"
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K"
+    return str(n)
+
+
 def format_duration(ms: int) -> str:
     """Format milliseconds to human readable duration."""
     if not ms:
@@ -85,3 +98,4 @@ def register_filters(app):
     app.jinja_env.filters["format_number"] = format_number
     app.jinja_env.filters["truncate_text"] = truncate_text
     app.jinja_env.filters["format_duration"] = format_duration
+    app.jinja_env.filters["format_tokens"] = format_tokens

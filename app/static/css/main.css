@@ -301,6 +301,35 @@ pre {
     color: var(--text-dim);
 }
 
+/* Context window fullness indicator (inline mini bar inside a meta-tag) */
+.ctx-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.ctx-bar {
+    display: inline-block;
+    width: 40px;
+    height: 6px;
+    background: var(--bg-primary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.ctx-bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--green);
+    transition: width 0.2s;
+}
+
+.ctx-med .ctx-bar-fill { background: var(--accent); }
+.ctx-high .ctx-bar-fill { background: var(--red); }
+.ctx-med  { color: var(--accent); }
+.ctx-high { color: var(--red); }
+
 .session-card-actions {
     display: flex;
     gap: 0.4rem;

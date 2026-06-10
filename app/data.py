@@ -113,6 +113,8 @@ def get_all_sessions(include_background: bool = False) -> list[Session]:
                 git_branch=meta.get("git_branch", ""),
                 jsonl_path=str(jsonl_file),
                 entrypoint=meta.get("entrypoint", ""),
+                last_input_tokens=meta.get("last_input_tokens", 0),
+                total_output_tokens=meta.get("total_output_tokens", 0),
             )
             sessions.append(session)
 
@@ -170,6 +172,7 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
         "git_branch": "", "project_path": "",
         "custom_title": "", "summary": "", "last_user_message": "",
         "entrypoint": "",
+        "last_input_tokens": 0, "total_output_tokens": 0,
     }
     first_ts = None
     last_ts = None
@@ -196,6 +199,17 @@ def _extract_session_meta(jsonl_path: Path) -> dict:
                             meta["project_path"] = d["cwd"]
                         if not meta["entrypoint"] and d.get("entrypoint"):
                             meta["entrypoint"] = d["entrypoint"]
+                        if msg_type == "assistant":
+                            usage = d.get("message", {}).get("usage", {})
+                            if usage:
+                                inp = (usage.get("input_tokens", 0)
+                                       + usage.get("cache_read_input_tokens", 0)
+                                       + usage.get("cache_creation_input_tokens", 0))
+                                # Track the most recent turn's input as the
+                                # session's "current context size".
+                                if inp > 0:
+                                    meta["last_input_tokens"] = inp
+                                meta["total_output_tokens"] += usage.get("output_tokens", 0)
                         if msg_type == "user":
                             content = d.get("message", {}).get("content", "")
                             text = _extract_user_text(content)
